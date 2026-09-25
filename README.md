@@ -15,7 +15,7 @@
 
 ---
 
-## 🖧 Sobre o projeto
+## Sobre o projeto
 
 O **SwitchOps** começou por um motivo bem simples: eu queria parar de entrar no CLI toda hora só para fazer coisas básicas em switch.
 
@@ -51,9 +51,9 @@ Ajuda é bem-vinda, principalmente porque equipamentos e versões diferentes do 
 
 ---
 
-## 🔌 O que ele faz hoje
+## O que ele faz hoje
 
-### 🟢 Portas
+### Portas
 
 - consulta status da interface;
 - mostra VLAN;
