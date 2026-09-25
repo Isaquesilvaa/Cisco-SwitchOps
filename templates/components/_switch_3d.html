@@ -1,0 +1,126 @@
+{% if painel_switch and not painel_switch.erro %}
+{% set front_ports = painel_switch.portas | selectattr('prefixo', 'equalto', 'GI') | list %}
+{% set front_port_count = front_ports | length %}
+{% set front_rows = ((front_port_count + 23) // 24) if front_port_count else 2 %}
+{% set front_rows = 2 if front_rows < 2 else front_rows %}
+{% set extra_rows = front_rows - 2 %}
+{% set switch_height = 202 + (extra_rows * 55) %}
+{% set stage_height = 500 + (extra_rows * 62) %}
+<article class="panel switch3d-card"
+         data-port-count="{{ front_port_count }}"
+         data-port-rows="{{ front_rows }}">
+    <div class="panel-header switch3d-header">
+        <div>
+            <h3>{{ painel_switch.switch }} · visual 3D</h3>
+            <p>Arraste para girar o equipamento e inspecionar frente, traseira, topo e laterais.</p>
+        </div>
+        <div class="switch3d-meta">
+            <span>{{ front_port_count }} portas Gigabit</span>
+            {% if front_rows > 2 %}
+            <strong>{{ front_rows }} fileiras</strong>
+            {% endif %}
+        </div>
+        <div class="switch3d-controls" role="group" aria-label="Ângulos do switch">
+            <button type="button" class="switch3d-view-btn active" data-switch-view="front">Frente</button>
+            <button type="button" class="switch3d-view-btn" data-switch-view="back">Traseira</button>
+            <button type="button" class="switch3d-view-btn" data-switch-view="top">Topo</button>
+            <button type="button" class="switch3d-view-btn" data-switch-view="left">Esquerda</button>
+            <button type="button" class="switch3d-view-btn" data-switch-view="right">Direita</button>
+        </div>
+    </div>
+
+    <div class="switch3d-stage"
+         data-switch3d-stage
+         tabindex="0"
+         aria-label="Modelo 3D girável do switch"
+         style="--dynamic-stage-height: {{ stage_height }}px;">
+        <div class="switch3d-shadow"></div>
+        <div class="switch3d-object"
+             data-switch3d-object
+             style="--dynamic-switch-height: {{ switch_height }}px;">
+            <section class="switch3d-face switch3d-front" aria-label="Frente do switch">
+                <i class="switch3d-screw tl" aria-hidden="true"></i>
+                <i class="switch3d-screw tr" aria-hidden="true"></i>
+                <i class="switch3d-screw bl" aria-hidden="true"></i>
+                <i class="switch3d-screw br" aria-hidden="true"></i>
+                <div class="switch3d-front-left">
+                    <div class="switch3d-brand-mark"><span></span><span></span><span></span><span></span><span></span></div>
+                    <div class="switch3d-brand-copy">
+                        <strong>Catalyst</strong>
+                        <small>{{ painel_switch.modelo }}</small>
+                    </div>
+                    <div class="switch3d-status-leds">
+                        <i class="on"></i><i></i><i></i>
+                    </div>
+                </div>
+
+                <div class="switch3d-front-ports">
+                    {% for item in front_ports %}
+                    <div
+                        class="switch3d-port {{ item.estado }} {% if item.trunk %}trunk{% endif %}"
+                        data-live-port="{{ item.porta }}"
+                        title="{{ item.porta }} | {{ item.nome }} | {{ item.estado }} | VLAN {{ item.vlan }}"
+                    >
+                        <span class="switch3d-port-number">{{ item.numero }}</span>
+                        <span class="switch3d-rj45"><i></i><i></i><i></i><i></i></span>
+                        <span class="switch3d-port-led"></span>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <div class="switch3d-uplinks">
+                    <div class="switch3d-uplink-stack">
+                        <span class="switch3d-uplink"></span>
+                        <span class="switch3d-uplink"></span>
+                    </div>
+                    <small>UPLINK</small>
+                </div>
+            </section>
+
+            <section class="switch3d-face switch3d-back" aria-label="Traseira do switch">
+                <div class="switch3d-rear-section switch3d-power">
+                    <span class="power-socket"></span>
+                    <small>AC POWER</small>
+                </div>
+                <div class="switch3d-rear-section">
+                    <span class="rear-console"></span>
+                    <small>CONSOLE</small>
+                </div>
+                <div class="switch3d-rear-section rear-stack-group">
+                    <span class="rear-stack-port"></span>
+                    <span class="rear-stack-port"></span>
+                    <small>STACK</small>
+                </div>
+                <div class="switch3d-rear-vents" aria-hidden="true">
+                    {% for _ in range(20) %}<i></i>{% endfor %}
+                </div>
+                <div class="switch3d-rear-label">
+                    <strong>{{ painel_switch.switch }}</strong>
+                    <span>{{ painel_switch.modelo }}</span>
+                </div>
+            </section>
+
+            <section class="switch3d-face switch3d-top" aria-label="Topo do switch">
+                <div class="switch3d-top-logo">SWITCHOPS</div>
+                <div class="switch3d-top-vents">
+                    {% for _ in range(48) %}<i></i>{% endfor %}
+                </div>
+            </section>
+
+            <section class="switch3d-face switch3d-bottom" aria-label="Base do switch">
+                <div class="switch3d-feet"><i></i><i></i><i></i><i></i></div>
+                <span>Network Switch · {{ painel_switch.modelo }}</span>
+            </section>
+
+            <section class="switch3d-face switch3d-left" aria-label="Lateral esquerda">
+                <div class="switch3d-side-vents">{% for _ in range(18) %}<i></i>{% endfor %}</div>
+            </section>
+
+            <section class="switch3d-face switch3d-right" aria-label="Lateral direita">
+                <div class="switch3d-side-vents">{% for _ in range(18) %}<i></i>{% endfor %}</div>
+            </section>
+        </div>
+        <div class="switch3d-hint">Arraste com o mouse para girar · scroll para aproximar</div>
+    </div>
+</article>
+{% endif %}

@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SwitchOps</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/switchops.css') }}">
+</head>
+<body>
+
+{% if not autenticado %}
+
+<div class="login-page">
+    <div class="login-card">
+        <div class="brand brand-login">
+            <div class="brand-symbol" aria-hidden="true">
+                <span></span><span></span><span></span><span></span><span></span>
+            </div>
+            <div>
+                <strong>SwitchOps</strong>
+                <small>Network Operations</small>
+            </div>
+        </div>
+
+        <div class="login-copy">
+            <h1>Acesso ao SwitchOps</h1>
+            <p>Entre com sua conta para acessar as ferramentas de operação de rede.</p>
+        </div>
+
+        {% if mensagem %}
+        <div class="alert alert-error">{{ mensagem }}</div>
+        {% endif %}
+
+        <form method="POST" class="login-form">
+            <input type="hidden" name="acao" value="login">
+
+            <label for="usuario">Usuário</label>
+            <input
+                id="usuario"
+                type="text"
+                name="usuario"
+                autocomplete="username"
+                required
+            >
+
+            <label for="senha">Senha</label>
+            <input
+                id="senha"
+                type="password"
+                name="senha"
+                autocomplete="current-password"
+                required
+            >
+
+            <button type="submit" class="btn btn-primary btn-full">
+                Entrar
+            </button>
+        </form>
+    </div>
+</div>
+
+{% else %}
+
+<div class="app-shell">
+
+    <aside class="sidebar">
+        <div class="brand">
+            <div class="brand-symbol" aria-hidden="true">
+                <span></span><span></span><span></span><span></span><span></span>
+            </div>
+            <div>
+                <strong>SwitchOps</strong>
+                <small>Network Operations</small>
+            </div>
+        </div>
+
+        <nav class="side-nav" aria-label="Navegação principal">
+            <button class="nav-item active" type="button" data-section="dashboard">
+                <span class="nav-icon">▦</span>
+                <span>Dashboard</span>
+            </button>
+
+            <div class="nav-label">Operação</div>
+
+            <button class="nav-item" type="button" data-section="portas">
+                <span class="nav-icon">⌘</span>
+                <span>Portas</span>
+            </button>
+
+            {% if pode_buscar_mac %}
+            <button class="nav-item" type="button" data-section="dispositivos">
+                <span class="nav-icon">⌕</span>
+                <span>Localizar dispositivo</span>
+            </button>
+
+            <button class="nav-item" type="button" data-section="vlans">
+                <span class="nav-icon">≡</span>
+                <span>VLANs</span>
+            </button>
+            {% endif %}
+
+            <div class="nav-label">Sistema</div>
+
+            <button class="nav-item" type="button" data-section="auditoria">
+                <span class="nav-icon">☷</span>
+                <span>Auditoria</span>
+            </button>
+
+            {% if pode_administrar_usuarios %}
+            <a class="nav-item nav-link-item" href="{{ url_for('admin_users') }}">
+                <span class="nav-icon">⚙</span>
+                <span>Usuários</span>
+            </a>
+            {% endif %}
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="session-user">
+                <div class="avatar">{{ usuario[0]|upper }}</div>
+                <div>
+                    <strong>{{ usuario }}</strong>
+                    <small>{{ perfil }}</small>
+                </div>
+            </div>
+            <a class="logout-link" href="/logout">Sair</a>
+        </div>
+    </aside>
+
+    <main class="main-area">
+        <header class="topbar">
+            <div>
+                <h1 id="page-title">Dashboard</h1>
+                <p id="page-subtitle">Visão geral do equipamento selecionado</p>
+            </div>
+
+            <div class="topbar-right">
+                <div class="switch-picker">
+                    <label for="global-switch">Switch</label>
+                    <select id="global-switch">
+                        {% for nome in switches %}
+                        <option
+                            value="{{ nome }}"
+                            {% if nome == switch_selecionado %}selected{% endif %}
+                        >
+                            {{ nome }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="connection-pill" id="live-connection-pill">
+                    <i></i>
+                    Rede interna
+                </div>
+            </div>
+        </header>
+
+        <div class="workspace">
+
+            {# Mensagens informativas/sucesso não são mais exibidas
+               no topo. Mantemos somente erros explícitos. #}
+            {% if mensagem and mensagem.startswith('Erro:') %}
+            <div class="alert alert-error">
+                {{ mensagem }}
+            </div>
+            {% endif %}
+<!-- DASHBOARD                                         -->
+<section class="view-section active" data-view="dashboard">
+
+                <div class="dashboard-hero">
+                    <div>
+                        <div class="eyebrow">EQUIPAMENTO SELECIONADO</div>
+                        <h2>{{ switch_selecionado }}</h2>
+                        <p>
+                            {{ switches[switch_selecionado]["ip"] }}
+                            {% if painel_switch and painel_switch.modelo %}
+                            · {{ painel_switch.modelo }}
+                            {% endif %}
+                        </p>
+                    </div>
+
+                    <div class="dashboard-live-actions">
+                        <span class="live-stream-badge connecting" id="live-stream-badge"><i></i> aguardando...</span>
+                        <button
+                            type="button"
+                            class="btn btn-outline"
+                            id="refresh-health"
+                        >
+                            Atualizar métricas
+                        </button>
+                    </div>
+                </div>
+
+                {% set portas_dashboard = painel_switch.portas if painel_switch and not painel_switch.erro else [] %}
+                {% set total_portas = portas_dashboard|length %}
+                {% set portas_up = portas_dashboard|selectattr("estado", "equalto", "connected")|list|length %}
+                {% set portas_trunk = portas_dashboard|selectattr("trunk")|list|length %}
+                {% set portas_down = total_portas - portas_up %}
+
+                <div class="dashboard-switch-title">
+                    <div>
+                        <h3>Visão física do switch</h3>
+                        <p>Estado atual das interfaces do equipamento selecionado.</p>
+                    </div>
+                </div>
+
+                {% include "components/_switch_3d.html" %}
+
+                <div class="metric-grid metric-grid-below-switch">
+                    <article class="metric-card">
+                        <div class="metric-head">
+                            <span>CPU</span>
+                            <span class="metric-dot"></span>
+                        </div>
+                        <strong id="metric-cpu">--</strong>
+                        <small>utilização atual</small>
+                        <div class="meter">
+                            <span id="meter-cpu" style="width:0%"></span>
+                        </div>
+                    </article>
+
+                    <article class="metric-card">
+                        <div class="metric-head">
+                            <span>Memória</span>
+                            <span class="metric-dot"></span>
+                        </div>
+                        <strong id="metric-memory">--</strong>
+                        <small>memória em uso</small>
+                        <div class="meter">
+                            <span id="meter-memory" style="width:0%"></span>
+                        </div>
+                    </article>
+
+                    <article class="metric-card temperature-card">
+                        <div class="metric-head">
+                            <span>Temperatura</span>
+                            <span class="metric-dot"></span>
+                        </div>
+
+                        <div class="temp-layout">
+                            <div class="fan fan-neutral" id="temperature-fan">
+                                <span></span><span></span><span></span><span></span>
+                                <i></i>
+                            </div>
+
+                            <div>
+                                <strong id="metric-temp">--</strong>
+                                <small id="temp-status">sensor do equipamento</small>
+                            </div>
+                        </div>
+                    </article>
+
+                    <article class="metric-card">
+                        <div class="metric-head">
+                            <span>Uptime</span>
+                            <span class="metric-dot"></span>
+                        </div>
+                        <strong class="uptime-value" id="metric-uptime">--</strong>
+                        <small>tempo em operação</small>
+                    </article>
+                </div>
+
+                <div class="dashboard-grid">
+
+                    <article class="panel">
+                        <div class="panel-header">
+                            <div>
+                                <h3>Distribuição de portas</h3>
+                                <p>Resumo do estado das interfaces</p>
+                            </div>
+                        </div>
+
+                        <div class="port-summary">
+                            <div class="ring-wrap">
+                                <div
+                                    class="ring"
+                                    id="live-port-ring"
+                                    style="--up: {% if total_portas %}{{ (portas_up * 100 / total_portas)|round|int }}{% else %}0{% endif %}"
+                                >
+                                    <div>
+                                        <strong id="live-portas-up">{{ portas_up }}</strong>
+                                        <small>ativas</small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="summary-list">
+                                <div>
+                                    <span><i class="legend-dot up"></i> Conectadas</span>
+                                    <strong id="summary-up">{{ portas_up }}</strong>
+                                </div>
+                                <div>
+                                    <span><i class="legend-dot down"></i> Sem link / down</span>
+                                    <strong id="summary-down">{{ portas_down }}</strong>
+                                </div>
+                                <div>
+                                    <span><i class="legend-dot trunk"></i> Trunks</span>
+                                    <strong id="summary-trunk">{{ portas_trunk }}</strong>
+                                </div>
+                                <div>
+                                    <span><i class="legend-dot total"></i> Interfaces exibidas</span>
+                                    <strong id="summary-total">{{ total_portas }}</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+
+                    <article class="panel">
+                        <div class="panel-header">
+                            <div>
+                                <h3>Informações do equipamento</h3>
+                                <p>Dados do switch selecionado</p>
+                            </div>
+                        </div>
+
+                        <div class="info-table">
+                            <div>
+                                <span>Hostname</span>
+                                <strong>{{ switch_selecionado }}</strong>
+                            </div>
+                            <div>
+                                <span>IP de gerenciamento</span>
+                                <strong>{{ switches[switch_selecionado]["ip"] }}</strong>
+                            </div>
+                            <div>
+                                <span>Modelo</span>
+                                <strong>
+                                    {% if painel_switch %}
+                                    {{ painel_switch.modelo }}
+                                    {% else %}
+                                    Cisco Catalyst
+                                    {% endif %}
+                                </strong>
+                            </div>
+                            <div>
+                                <span>Acesso</span>
+                                <strong>
+                                    {% if switches[switch_selecionado]["acesso"] == "direto" %}
+                                    Direto
+                                    {% elif switches[switch_selecionado]["acesso"] == "direto_fallback_jump" %}
+                                    Direto + fallback
+                                    {% else %}
+                                    Jump host
+                                    {% endif %}
+                                </strong>
+                            </div>
+                        </div>
+                    </article>
+                </div>
+
+                <div class="health-note" id="health-message">
+                    Atualização automática ativa · intervalo de 5 segundos.
+                </div>
+            </section>
+<!-- PORTAS                                            -->
+<section class="view-section" data-view="portas">
+                <div class="section-heading">
+                    <div>
+                        <h2>Operação de portas</h2>
+                        <p>Consulta e ações nas interfaces do equipamento.</p>
+                    </div>
+                </div>
+
+                <form method="POST" id="form-porta">
+                    <input type="hidden" name="acao" value="executar_porta">
+
+                    <div class="panel controls-panel">
+                        <div class="form-grid">
+                            <div class="field">
+                                <label for="switch">Switch</label>
+                                <select id="switch" name="switch">
+                                    {% for nome in switches %}
+                                    <option
+                                        value="{{ nome }}"
+                                        {% if nome == switch_selecionado %}selected{% endif %}
+                                    >
+                                        {{ nome }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <div class="field">
+                                <label for="porta">Interface</label>
+                                <select id="porta" name="porta">
+                                    {% for porta in portas %}
+                                    <option
+                                        value="{{ porta }}"
+                                        {% if porta == porta_selecionada %}selected{% endif %}
+                                    >
+                                        {{ porta }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="action-row">
+                            <button class="btn btn-primary" type="submit" name="operacao" value="status">
+                                Consultar
+                            </button>
+
+                            <button class="btn btn-secondary" type="submit" name="operacao" value="sticky">
+                                Limpar Sticky
+                            </button>
+
+                            <button
+                                class="btn btn-danger"
+                                type="submit"
+                                name="operacao"
+                                value="desligar"
+                                onclick="return confirmarDesligamento();"
+                            >
+                                Desligar
+                            </button>
+
+                            <button class="btn btn-success" type="submit" name="operacao" value="ligar">
+                                Ligar
+                            </button>
+                        </div>
+                    </div>
+                </form>
+
+                {% include "components/_switch_3d.html" %}
+
+
+                {% if status_porta %}
+                <article class="panel result-panel">
+                    <div class="panel-header">
+                        <div>
+                            <h3>{{ switch_selecionado }} / {{ status_porta.porta }}</h3>
+                            <p>
+                                {% if status_porta.nome != "-" %}
+                                {{ status_porta.nome }}
+                                {% else %}
+                                Sem descrição
+                                {% endif %}
+                            </p>
+                        </div>
+
+                        <span class="status-badge state-{{ status_porta.estado|replace('-', '') }}">
+                            {{ status_porta.estado|upper }}
+                        </span>
+                    </div>
+
+                    <div class="result-grid">
+                        <div>
+                            <span>VLAN</span>
+                            <strong>{{ status_porta.vlan|upper }}</strong>
+                        </div>
+                        <div>
+                            <span>Duplex</span>
+                            <strong>
+                                {% if status_porta.duplex in ["a-full", "full"] %}
+                                Full
+                                {% elif status_porta.duplex in ["a-half", "half"] %}
+                                Half
+                                {% else %}
+                                {{ status_porta.duplex }}
+                                {% endif %}
+                            </strong>
+                        </div>
+                        <div>
+                            <span>Velocidade</span>
+                            <strong>
+                                {% if status_porta.velocidade in ["a-1000", "1000"] %}
+                                1 Gbps
+                                {% elif status_porta.velocidade in ["a-100", "100"] %}
+                                100 Mbps
+                                {% elif status_porta.velocidade in ["a-10", "10"] %}
+                                10 Mbps
+                                {% else %}
+                                {{ status_porta.velocidade }}
+                                {% endif %}
+                            </strong>
+                        </div>
+                    </div>
+                </article>
+                {% endif %}
+            </section>
+<!-- LOCALIZAR DISPOSITIVO                             -->
+{% if pode_buscar_mac %}
+            <section class="view-section" data-view="dispositivos">
+                <div class="section-heading">
+                    <div>
+                        <h2>Localizar dispositivo</h2>
+                        <p>Pesquisa o endereço MAC nos switches cadastrados e retorna a porta final.</p>
+                    </div>
+                </div>
+
+                <form method="POST" id="form-mac">
+                    <input type="hidden" name="acao" value="buscar_mac">
+
+                    <div class="panel">
+                        <div class="search-row">
+                            <div class="field">
+                                <label for="mac">Endereço MAC</label>
+                                <input
+                                    id="mac"
+                                    type="text"
+                                    name="mac"
+                                    value="{{ mac_pesquisado }}"
+                                    placeholder="AA:BB:CC:DD:EE:FF"
+                                    required
+                                >
+                            </div>
+
+                            <button class="btn btn-primary" type="submit">
+                                Procurar
+                            </button>
+                        </div>
+                    </div>
+                </form>
+
+                {% if mac_pesquisado %}
+                <div class="mac-search-feedback {% if resultados_mac %}found{% else %}not-found{% endif %}">
+                    {% if resultados_mac %}
+                    <strong>Dispositivo localizado.</strong>
+                    <span>
+                        {{ resultados_mac|length }}
+                        {% if resultados_mac|length == 1 %}
+                        porta final encontrada.
+                        {% else %}
+                        portas finais encontradas.
+                        {% endif %}
+                        Links entre switches foram ignorados.
+                    </span>
+                    {% else %}
+                    <strong>Nenhuma porta final localizada.</strong>
+                    <span>
+                        O MAC não apareceu em uma porta final nos switches consultados.
+                        Links entre switches não são exibidos.
+                    </span>
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                {% if resultados_mac %}
+                <div class="result-list">
+                    {% for resultado in resultados_mac %}
+                    <article class="panel result-panel">
+                        <div class="panel-header">
+                            <div>
+                                <h3>{{ resultado.switch }} / {{ resultado.porta }}</h3>
+                                <p>
+                                    {% if resultado.descricao != "-" %}
+                                    {{ resultado.descricao }}
+                                    {% else %}
+                                    Dispositivo localizado
+                                    {% endif %}
+                                </p>
+                            </div>
+                            <span class="status-badge state-connected">ENCONTRADO</span>
+                        </div>
+
+                        <div class="result-grid">
+                            <div>
+                                <span>Switch</span>
+                                <strong>{{ resultado.switch }}</strong>
+                            </div>
+                            <div>
+                                <span>Porta</span>
+                                <strong>{{ resultado.porta }}</strong>
+                            </div>
+                            <div>
+                                <span>VLAN</span>
+                                <strong>{{ resultado.vlan }}</strong>
+                            </div>
+                        </div>
+                    </article>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </section>
+<!-- VLANs                                             -->
+<section class="view-section" data-view="vlans">
+                <div class="section-heading">
+                    <div>
+                        <h2>VLANs</h2>
+                        <p>Altera a VLAN de acesso de uma interface. Trunks continuam protegidos pelo backend.</p>
+                    </div>
+                </div>
+
+                <form method="POST" id="form-vlan">
+                    <input type="hidden" name="acao" value="executar_porta">
+                    <input type="hidden" name="operacao" value="vlan">
+
+                    <div class="panel">
+                        <div class="form-grid three-columns">
+                            <div class="field">
+                                <label for="vlan-switch">Switch</label>
+                                <select id="vlan-switch" name="switch">
+                                    {% for nome in switches %}
+                                    <option
+                                        value="{{ nome }}"
+                                        {% if nome == switch_selecionado %}selected{% endif %}
+                                    >
+                                        {{ nome }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <div class="field">
+                                <label for="vlan-porta">Interface</label>
+                                <select id="vlan-porta" name="porta">
+                                    {% for porta in portas %}
+                                    <option
+                                        value="{{ porta }}"
+                                        {% if porta == porta_selecionada %}selected{% endif %}
+                                    >
+                                        {{ porta }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <div class="field">
+                                <label for="nova_vlan">Nova VLAN</label>
+                                <select id="nova_vlan" name="nova_vlan">
+                                    {% for vlan_id, vlan_nome in vlans.items() %}
+                                    <option value="{{ vlan_id }}">
+                                        VLAN {{ vlan_id }} · {{ vlan_nome }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-footer">
+                            <span>O SwitchOps valida se a interface é access e se a VLAN existe antes de aplicar.</span>
+                            <button class="btn btn-primary" type="submit">
+                                Aplicar VLAN
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </section>
+            {% endif %}
+<!-- AUDITORIA                                         -->
+<section class="view-section" data-view="auditoria">
+                <div class="section-heading">
+                    <div>
+                        <h2>Auditoria</h2>
+                        <p>Registro das ações executadas pelo SwitchOps.</p>
+                    </div>
+                </div>
+
+                <article class="panel audit-info">
+                    <div class="audit-icon">☷</div>
+                    <div>
+                        <h3>Auditoria ativa</h3>
+                        <p>
+                            Login, logout e operações de porta continuam sendo registrados
+                            pelo backend no arquivo <code>logs/switchops_audit.log</code>.
+                        </p>
+                        <p class="muted">
+                            A próxima etapa pode trazer estes registros para esta tela com filtros
+                            por usuário, switch, porta e período.
+                        </p>
+                    </div>
+                </article>
+            </section>
+
+        </div>
+    </main>
+</div>
+
+<div class="loading-overlay" id="loading-dialog">
+    <div class="loading-card">
+        <div class="spinner"></div>
+        <strong>Consultando a rede</strong>
+        <span id="loading-text">Aguarde enquanto o SwitchOps processa a solicitação.</span>
+    </div>
+</div>
+
+<script>
+    window.SWITCHOPS = {
+        selectedSwitch: {{ switch_selecionado|tojson }},
+        profile: {{ perfil|tojson }}
+    };
+</script>
+<script src="{{ url_for('static', filename='js/switchops.js') }}"></script>
+
+{% endif %}
+
+</body>
+</html>

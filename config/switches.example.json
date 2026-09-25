@@ -1,0 +1,17 @@
+{
+  "jump_host": "SW02",
+  "switches": {
+    "SW01": {
+      "ip": "192.168.10.2",
+      "acesso": "direto"
+    },
+    "SW02": {
+      "ip": "192.168.10.3",
+      "acesso": "direto"
+    },
+    "SW03": {
+      "ip": "192.168.10.4",
+      "acesso": "direto_fallback_jump"
+    }
+  }
+}

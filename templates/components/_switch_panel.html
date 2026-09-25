@@ -1,0 +1,71 @@
+{% if painel_switch %}
+<article class="panel switch-panel-card">
+    <div class="panel-header">
+        <div>
+            <h3>{{ painel_switch.switch }}</h3>
+            <p>{{ painel_switch.modelo }} · visão física das interfaces</p>
+        </div>
+        <span class="live-indicator"><i></i> Status atual</span>
+    </div>
+
+    {% if painel_switch.erro %}
+    <div class="alert alert-error">
+        Não foi possível carregar o painel: {{ painel_switch.erro }}
+    </div>
+    {% else %}
+
+    <div class="catalyst-chassis">
+        <div class="catalyst-face">
+            {% for grupo in painel_switch.grupos %}
+            <div class="catalyst-member">
+                <div class="catalyst-brand-inline">
+                    <div class="mini-network-mark">
+                        <i></i><i></i><i></i><i></i><i></i>
+                    </div>
+                    <div>
+                        <strong>Catalyst</strong>
+                        <small>{{ painel_switch.modelo }}</small>
+                    </div>
+                </div>
+
+                <div class="catalyst-member-main">
+                    <div class="catalyst-member-topline">
+                        <strong>{{ grupo.titulo }}</strong>
+                        <div class="switch-leds">
+                            <span><i class="led green"></i>SYST</span>
+                            <span><i class="led amber"></i>STAT</span>
+                            <span><i class="led"></i>SPEED</span>
+                        </div>
+                    </div>
+
+                    <div class="catalyst-port-grid">
+                        {% for item in grupo.portas %}
+                        <div
+                            class="catalyst-port {{ item.estado }} {% if item.trunk %}trunk{% endif %}"
+                            data-port="{{ item.porta }}"
+                            title="{{ item.porta }} | {{ item.nome }} | {{ item.estado }} | VLAN {{ item.vlan }} | {{ item.velocidade }}"
+                        >
+                            <div class="port-number">{{ item.numero }}</div>
+                            <div class="rj45">
+                                <span></span><span></span><span></span><span></span>
+                            </div>
+                            <div class="port-led"></div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="switch-legend">
+        <span><i class="legend-dot up"></i> Conectada</span>
+        <span><i class="legend-dot down"></i> Sem link</span>
+        <span><i class="legend-dot warning"></i> Desabilitada</span>
+        <span><i class="legend-dot error"></i> Err-disabled</span>
+        <span><i class="legend-box trunk"></i> Trunk</span>
+    </div>
+    {% endif %}
+</article>
+{% endif %}

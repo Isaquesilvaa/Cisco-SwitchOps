@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Usuários - SwitchOps</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/switchops.css') }}">
+</head>
+<body>
+<div class="admin-page">
+    <div class="admin-top">
+        <div>
+            <small>SwitchOps</small>
+            <h1>Usuários e perfis</h1>
+            <p>Aqui ficam as contas que entram no sistema e o perfil de cada uma.</p>
+        </div>
+        <a class="btn btn-outline" href="{{ url_for('inicio') }}">Voltar</a>
+    </div>
+
+    {% if mensagem %}
+    <div class="admin-message">{{ mensagem }}</div>
+    {% endif %}
+
+    <div class="admin-grid">
+        <section class="panel admin-card">
+            <h2>Criar usuário</h2>
+
+            <form method="POST" class="admin-form">
+                <input type="hidden" name="acao" value="criar">
+
+                <label>Usuário</label>
+                <input name="username" required>
+
+                <label>Senha</label>
+                <input name="password" type="password" minlength="8" required>
+
+                <label>Perfil</label>
+                <select name="role" required>
+                    {% for role in roles %}
+                    <option value="{{ role.name }}">{{ role.name }}</option>
+                    {% endfor %}
+                </select>
+
+                <button class="btn btn-primary" type="submit">Criar usuário</button>
+            </form>
+        </section>
+
+        <section class="panel admin-card admin-users">
+            <h2>Usuários cadastrados</h2>
+
+            <div class="admin-user-list">
+                {% for item in users %}
+                <article class="admin-user-row">
+                    <div>
+                        <strong>{{ item.username }}</strong>
+                        <small>
+                            {{ item.role }}
+                            ·
+                            {% if item.active %}ativo{% else %}desativado{% endif %}
+                        </small>
+                    </div>
+
+                    <form method="POST" class="admin-inline-form">
+                        <input type="hidden" name="acao" value="role">
+                        <input type="hidden" name="username" value="{{ item.username }}">
+
+                        <select name="role">
+                            {% for role in roles %}
+                            <option
+                                value="{{ role.name }}"
+                                {% if role.name == item.role %}selected{% endif %}
+                            >
+                                {{ role.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+
+                        <button class="btn btn-outline" type="submit">Salvar perfil</button>
+                    </form>
+
+                    <form method="POST" class="admin-inline-form">
+                        <input type="hidden" name="acao" value="senha">
+                        <input type="hidden" name="username" value="{{ item.username }}">
+                        <input
+                            name="password"
+                            type="password"
+                            minlength="8"
+                            placeholder="Nova senha"
+                            required
+                        >
+                        <button class="btn btn-outline" type="submit">Trocar senha</button>
+                    </form>
+
+                    <form method="POST">
+                        <input type="hidden" name="acao" value="estado">
+                        <input type="hidden" name="username" value="{{ item.username }}">
+                        <input
+                            type="hidden"
+                            name="active"
+                            value="{% if item.active %}0{% else %}1{% endif %}"
+                        >
+                        <button class="btn btn-outline" type="submit">
+                            {% if item.active %}Desativar{% else %}Ativar{% endif %}
+                        </button>
+                    </form>
+                </article>
+                {% endfor %}
+            </div>
+        </section>
+    </div>
+
+    <section class="panel admin-card admin-roles">
+        <h2>Perfis e permissões</h2>
+
+        <div class="role-grid">
+            {% for role in roles %}
+            <article>
+                <strong>{{ role.name }}</strong>
+                <p>{{ role.description }}</p>
+
+                <small>Permissões</small>
+                <ul>
+                    {% for permission in role.permissions %}
+                    <li>{{ permission }}</li>
+                    {% endfor %}
+                </ul>
+
+                <small>Switches</small>
+                <p>{{ role.switches|join(", ") or "-" }}</p>
+            </article>
+            {% endfor %}
+        </div>
+    </section>
+</div>
+</body>
+</html>
