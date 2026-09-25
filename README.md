@@ -67,7 +67,7 @@ Ajuda é bem-vinda, principalmente porque equipamentos e versões diferentes do 
 
 ---
 
-### 🔎 Localização de dispositivos
+### Localização de dispositivos
 
 É possível pesquisar um endereço MAC e procurar em vários switches.
 
