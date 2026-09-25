@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🔵 SwitchOps
+# <img src="https://cdn.simpleicons.org/cisco/1BA0D7" width="34"/> SwitchOps
 
 ### Interface web para operação, monitoramento e automação de switches Cisco
 
@@ -42,6 +42,12 @@ O objetivo do projeto é continuar simples:
 > facilitar operações comuns em switches Cisco sem tentar substituir o CLI.
 
 Para troubleshooting mais pesado, configuração avançada e diagnóstico profundo, continuo achando o terminal melhor.
+
+Esse projeto ainda está em desenvolvimento e muita coisa eu ainda estou aprendendo no caminho.
+
+Se alguém quiser testar em outro modelo de switch, corrigir alguma coisa, melhorar um parser ou simplesmente dar uma ideia, pode abrir uma **Issue** ou mandar um **Pull Request**.
+
+Ajuda é bem-vinda, principalmente porque equipamentos e versões diferentes do IOS podem responder de formas diferentes.
 
 ---
 
